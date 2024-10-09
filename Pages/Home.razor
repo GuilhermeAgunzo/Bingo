@@ -1,0 +1,55 @@
+﻿@page "/"
+@inject ILocalStorageService LocalStorage
+
+<PageTitle>1kilo de bingo</PageTitle>
+
+@if (Cards.Count > 0)
+{
+	<div style="width:fit-content; margin: 0 auto;">
+		@for (int i = 0; i < rows; i++)
+		{
+			var cards = GetCards(i);
+
+			<div style="display: flex; gap: 15px; margin-bottom: 15px;">
+				@foreach (var card in cards)
+				{
+					<FluentCard Style="@($"background-color: {(card.IsActive ? "var(--accent-fill-rest); color: var(--fill-color)" : "")}; user-select: none; display:flex; justify-content:center; align-items: center; width: 200px; height: 100px; font-weight: 600; text-align: center;")"
+								MinimalStyle
+								@onclick="async () => await SwitchCardStatus(card)">
+						@(card.Description)
+					</FluentCard>
+				}
+			</div>
+		}
+	</div>
+}
+
+@code {
+	[CascadingParameter]
+	public IList<Card> Cards { get; set; } = null!;
+
+	public int rows { get; set; } = 0;
+	public int columns { get; set; } = 6;
+
+	protected override void OnAfterRender(bool firstRender)
+	{
+		var pages = (float)Cards.Count / columns;
+		rows = (int)Math.Ceiling(pages);
+	}
+
+	private List<Card> GetCards(int page)
+	{
+		return Cards
+			.Skip((page) * columns)
+			.Take(columns)
+			.ToList();
+	}
+
+	private async Task SwitchCardStatus(Card card)
+	{
+		card.IsActive = !card.IsActive;
+
+		await LocalStorage.SetItemAsync("cardsJson", Cards);
+		StateHasChanged();
+	}
+}

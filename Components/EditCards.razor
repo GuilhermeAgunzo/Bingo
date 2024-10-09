@@ -1,0 +1,10 @@
+﻿@implements IDialogContentComponent<CardTextAreaContent>
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+
+<FluentDialogBody>
+	<FluentTextArea @bind-Value="Content.Content" Autofocus Rows="30" Style="width: 100%;" />
+</FluentDialogBody>
+
+@code {
+	[Parameter] public CardTextAreaContent Content { get; set; } = default!;
+}

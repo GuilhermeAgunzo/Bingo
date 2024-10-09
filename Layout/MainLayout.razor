@@ -1,0 +1,96 @@
+﻿@inherits LayoutComponentBase
+@inject IDialogService DialogService
+@inject ILocalStorageService LocalStorage
+
+<FluentLayout>
+	<FluentHeader Height="150">
+		<span class="pixelify-sans" style="width:100%; margin-left: 0.75rem; display: flex; justify-content: center; align-items: center; gap: 15px; font-size: 48px;">
+			<img src="images/mr_worldwide.png" />
+			1kilo de bingo
+			<img src="images/so_curticao.png" />
+		</span>
+		<FluentButton Appearance="Appearance.Neutral"
+					  BackgroundColor="var(--accent-fill-rest)"
+					  IconEnd="@(new Icons.Regular.Size24.Edit().WithColor(Color.Lightweight))"
+					  Title="Configurações"
+					  Style="border: 0 !important; position: absolute; right: 0;"
+					  OnClick="OpenPanel" />
+	</FluentHeader>
+	<FluentStack Orientation="Orientation.Horizontal" Width="100%">
+		<FluentBodyContent style="height: 100% !important;">
+			<ErrorBoundary>
+				<ChildContent>
+					<div class="content">
+						<CascadingValue Value="Cards">
+							@Body
+						</CascadingValue>
+					</div>
+				</ChildContent>
+				<ErrorContent Context="ex">
+					<div class="blazor-error-boundary">@ex.Message</div>
+				</ErrorContent>
+			</ErrorBoundary>
+		</FluentBodyContent>
+	</FluentStack>
+</FluentLayout>
+
+<FluentDialogProvider />
+
+@code {
+	private IDialogReference? _dialog;
+	private CardTextAreaContent _textAreaContent = new() { Content = "" };
+
+	public IList<Card> Cards { get; set; } = [];
+
+	protected override async Task OnInitializedAsync()
+	{
+		Cards = await LocalStorage.GetItemAsync<List<Card>>("cardsJson") ?? [];
+		_textAreaContent.Content = await LocalStorage.GetItemAsStringAsync("cardsContent") ?? "";
+
+		StateHasChanged();
+	}
+
+	private async Task OpenPanel()
+	{
+		var _dialog = await DialogService.ShowPanelAsync<EditCards>(_textAreaContent, new DialogParameters<string>
+		{
+			Alignment = HorizontalAlignment.Right,
+			Content = "",
+			Title = "Editar",
+			PrimaryAction = "Salvar",
+			SecondaryAction = "Cancelar",
+			Width = "500px"
+		});
+
+		var result = await _dialog.Result;
+
+		if (result.Cancelled)
+			return;
+
+		if (result.Data is not null)
+		{
+			var data = result.Data as CardTextAreaContent;
+			if (data is not null)
+			{
+				await LocalStorage.SetItemAsStringAsync("cardsContent", data?.Content ?? "");
+
+				var cardContents = data!.Content.Split("\n");
+
+				var cards = cardContents
+					.Select(cardContent => string.IsNullOrEmpty(cardContent) ? null : new Card()
+					{
+						Description = cardContent.Trim(),
+						IsActive = false
+					})
+					.ToList();
+
+				cards.RemoveAll(x => x is null);
+
+				await LocalStorage.SetItemAsync("cardsJson", cards);
+				Cards = cards!;
+
+				StateHasChanged();
+			}
+		}
+	}
+}
